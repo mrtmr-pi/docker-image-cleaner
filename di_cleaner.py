@@ -135,7 +135,7 @@ def group_by_repo(images):
 def reverse_sort_images_created(images):
     return sorted(images, key=itemgetter(u'Created'), reverse=True)
 
-def filter_images_by_date(images, ttl_hour=0, ttl_day):
+def filter_images_by_date(images, ttl_hour, ttl_day):
     filtered_image = []
     for image in reverse_sort_images_created(images):
         delta_time = datetime.now() - datetime.fromtimestamp(image[u'Created'])
