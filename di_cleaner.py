@@ -189,7 +189,7 @@ def delete_images(client, images, verbose):
 def get_images_to_delete(none_images, repos, num_images_to_keep, keep_nones):
     images_to_delete = []
     if not keep_nones:
-        images_to_delete.extend(none_images)
+        images_to_delete.extend(none_images[num_images_to_keep:])
     [images_to_delete.extend(repo_images[num_images_to_keep:])
      for repo_images in repos.values()
      if len(repo_images) > num_images_to_keep]
