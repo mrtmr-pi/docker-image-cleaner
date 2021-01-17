@@ -29,6 +29,10 @@ HELP_IMAGES_TO_KEEP = (
     'How many docker images to keep. '
     'Defaults to %d images') % DEFAULT_IMAGES_TO_KEEP
 HELP_KEEP_NONE_IMAGES = 'Keep <none> images'
+HELP_DELETE_DAY_NONE_IMAGES = 'Delete old <none> images given day'
+DEFAULT_TTL_DAY = 0
+HELP_DELETE_HOUR_NONE_IMAGES = 'Delete old <none> images given hour'
+DEFAULT_TTL_HOUR = 0
 HELP_NOOP = 'Do nothing'
 HELP_VERBOSE = 'Print images to delete'
 
@@ -65,6 +69,16 @@ def setup_parser(parser):
         '--images-to-keep',
         help=HELP_IMAGES_TO_KEEP,
         default=DEFAULT_IMAGES_TO_KEEP,
+        type=int)
+    parser.add_argument(
+        '--ttl-day',
+        help=HELP_DELETE_DAY_NONE_IMAGES,
+        default=DEFAULT_TTL_DAY,
+        type=int)
+    parser.add_argument(
+        '--ttl-hour',
+        help=HELP_DELETE_HOUR_NONE_IMAGES,
+        default=DEFAULT_TTL_HOUR,
         type=int)
     parser.add_argument(
         '--keep-none-images',
@@ -121,6 +135,19 @@ def group_by_repo(images):
 def reverse_sort_images_created(images):
     return sorted(images, key=itemgetter(u'Created'), reverse=True)
 
+def filter_images_by_date(images, ttl_hour, ttl_day):
+    filtered_image = []
+    for image in reverse_sort_images_created(images):
+        delta_time = datetime.now() - datetime.fromtimestamp(image[u'Created'])
+        if convert_to_time(delta_time)['hour'] >= ttl_hour or delta_time.days >= ttl_day:
+            filtered_image.append(image)
+    return filtered_image
+
+def convert_to_time(delta_time):
+    seconds = delta_time.total_seconds()
+    hour = seconds / 3600.0
+    minute = (hour % 1) * 60
+    return {'hour':int(hour), 'minute':int(minute)}
 
 def sort_images_in_repos(repos):
     return {k: reverse_sort_images_created(v) for k, v in repos.items()}
@@ -162,7 +189,7 @@ def delete_images(client, images, verbose):
 def get_images_to_delete(none_images, repos, num_images_to_keep, keep_nones):
     images_to_delete = []
     if not keep_nones:
-        images_to_delete.extend(none_images)
+        images_to_delete.extend(none_images[num_images_to_keep:])
     [images_to_delete.extend(repo_images[num_images_to_keep:])
      for repo_images in repos.values()
      if len(repo_images) > num_images_to_keep]
@@ -180,7 +207,7 @@ def _macosx_docker_client(args):
     from docker.utils import kwargs_from_env
     kwargs = kwargs_from_env()
     # Read http://docker-py.readthedocs.org/en/latest/boot2docker/
-    kwargs['tls'].assert_hostname = False
+    # kwargs['tls'].assert_hostname = False
 
     kwargs['version'] = args.api_version
     kwargs['timeout'] = args.http_timeout
@@ -216,8 +243,11 @@ def main():
     debug(name='none_images', var=none_images)
     repos = sort_images_in_repos(group_by_repo(non_none_images))
     debug(name='repos', var=repos)
+    filtered_none_images = filter_images_by_date(none_images,
+        ttl_hour=args.ttl_hour, ttl_day=args.ttl_day)
     images_to_delete = get_images_to_delete(
-        none_images, repos, args.images_to_keep, args.keep_none_images)
+        filtered_none_images, repos, 
+        args.images_to_keep, args.keep_none_images)
     debug(name='images_to_delete', var=images_to_delete)
     if args.verbose:
         print_images_to_delete(images_to_delete)
