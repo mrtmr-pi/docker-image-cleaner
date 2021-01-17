@@ -31,6 +31,8 @@ HELP_IMAGES_TO_KEEP = (
 HELP_KEEP_NONE_IMAGES = 'Keep <none> images'
 HELP_DELETE_DAY_NONE_IMAGES = 'Delete old <none> images given day'
 DEFAULT_TTL_DAY = 0
+HELP_DELETE_HOUR_NONE_IMAGES = 'Delete old <none> images given hour'
+DEFAULT_TTL_HOUR = 0
 HELP_NOOP = 'Do nothing'
 HELP_VERBOSE = 'Print images to delete'
 
@@ -72,6 +74,11 @@ def setup_parser(parser):
         '--ttl-day',
         help=HELP_DELETE_DAY_NONE_IMAGES,
         default=DEFAULT_TTL_DAY,
+        type=int)
+    parser.add_argument(
+        '--ttl-hour',
+        help=HELP_DELETE_HOUR_NONE_IMAGES,
+        default=DEFAULT_TTL_HOUR,
         type=int)
     parser.add_argument(
         '--keep-none-images',
@@ -236,7 +243,8 @@ def main():
     debug(name='none_images', var=none_images)
     repos = sort_images_in_repos(group_by_repo(non_none_images))
     debug(name='repos', var=repos)
-    filtered_none_images = filter_images_by_date(none_images,ttl_day=args.ttl_day)
+    filtered_none_images = filter_images_by_date(none_images,
+        ttl_hour=args.ttl_hour, ttl_day=args.ttl_day)
     images_to_delete = get_images_to_delete(
         filtered_none_images, repos, 
         args.images_to_keep, args.keep_none_images)
